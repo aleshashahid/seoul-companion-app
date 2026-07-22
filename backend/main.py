@@ -29,3 +29,16 @@ def get_programs(): #error handling
         return rows
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.get("/housing")
+def get_housing():
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, type, monthly_cost, location, lifestyle_fit FROM housing_options;")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return rows
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
