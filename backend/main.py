@@ -3,6 +3,7 @@ import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 load_dotenv() #read env file
 
@@ -40,5 +41,28 @@ def get_housing():
         cur.close()
         conn.close()
         return rows
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+class UserCreate(BaseModel):
+    budget: int
+    major: str | None = None
+    duration_months: int
+    preferences: str | None = None
+
+@app.post("/users")
+def create_user(user: UserCreate):
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "INSERT INTO users (budget, major, duration_months, preferences) VALUES (%s, %s, %s, %s) RETURNING id, budget, major, duration_months, preferences;",
+            (user.budget, user.major, user.duration_months, user.preferences)
+        )
+        new_user = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        return new_user
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
