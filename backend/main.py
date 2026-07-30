@@ -78,6 +78,10 @@ def budget_match(program_cost: int, user_budget: int) -> float:
     # cheaper relative to budget = higher score
     # e.g. cost=1M, budget=2M -> 1 - 0.5 = 0.5
 
+# NOTE (revisit): budget_match is a hard cutoff (0 if over budget),
+# while interest_match gives partial credit even for partial overlap.
+# Consider softening the budget cutoff so being slightly over budget
+# isn't penalized as harshly as being wildly over.
 
 def interest_match(program_tags: list[str], user_interests: list[str]) -> float:
     if not user_interests:
@@ -144,3 +148,90 @@ def recommend(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scoring error: {str(e)}")
+    
+# --- Optimizer ---
+# Finds the best program + housing combination that fits within a hard budget ceiling.
+# Knapsack-style: "weight" = total cost, "value" = combined fit score, constraint = total_budget.
+# Brute-force is fine here (6 programs x 3 housing = 18 combos) — no real DP needed to be correct.
+
+def housing_fit_score(housing: dict, user: dict) -> float:
+    # how well housing's monthly cost fits a rough 40%-of-monthly-budget housing allowance
+    monthly_budget_share = user["total_budget"] / user["duration_months"] * 0.4
+    if housing["monthly_cost"] > monthly_budget_share:
+        return 0.3  # expensive relative to budget, but not a hard zero — still usable
+    return 1 - (housing["monthly_cost"] / monthly_budget_share) * 0.5
+
+
+# NOTE (revisit Day 9):
+# - budget_match's hard cutoff can dominate scoring even when a program is only
+#   slightly over budget, similar to the same issue in score_program (see Day 5 note).
+# - total_cost always multiplies housing by the user's requested duration_months,
+#   not the chosen program's own duration — currently assumes the stay length
+#   matches the user's input regardless of program length. Consider using
+#   min(program["duration_months"], user["duration_months"]) instead.
+def optimize_selection(user: dict, programs: list[dict], housing_options: list[dict]):
+    best_combo = None
+    best_score = -1  # anything real will beat this, so the first valid combo always wins initially
+
+    for program in programs:
+        for housing in housing_options:
+            total_cost = program["cost"] + (housing["monthly_cost"] * user["duration_months"])
+
+            if total_cost <= user["total_budget"]:  # hard constraint, filters before scoring
+                program_score = score_program(program, user)
+                housing_score = housing_fit_score(housing, user)
+                combined_score = (program_score * 0.7) + (housing_score * 0.3)
+
+                if combined_score > best_score:
+                    best_score = combined_score
+                    best_combo = {
+                        "program": program,
+                        "housing": housing,
+                        "total_cost": total_cost,
+                        "score": round(combined_score, 3),
+                    }
+
+    return best_combo
+
+
+class OptimizeRequest(BaseModel):
+    total_budget: int
+    duration_months: int
+    interests: list[str] = []
+    preferred_areas: list[str] = []
+
+
+@app.post("/optimize")
+def optimize(request: OptimizeRequest):
+    try:
+        user = {
+            "total_budget": request.total_budget,
+            "duration_months": request.duration_months,
+            "budget": request.total_budget,  # score_program expects "budget" — reuse same value
+            "interests": request.interests,
+            "preferred_areas": request.preferred_areas,
+        }
+
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cur.execute("SELECT id, name, university, cost, duration_months, location, tags FROM programs;")
+        programs = cur.fetchall()
+
+        cur.execute("SELECT id, type, monthly_cost, location, lifestyle_fit FROM housing_options;")
+        housing_options = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        result = optimize_selection(user, programs, housing_options)
+
+        if result is None:
+            raise HTTPException(status_code=404, detail="No program + housing combination fits within this budget.")
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Optimization error: {str(e)}")
