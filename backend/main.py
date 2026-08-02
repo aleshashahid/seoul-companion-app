@@ -4,10 +4,18 @@ import psycopg2.extras
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv() #read env file
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DATABASE_URL = os.getenv("DATABASE_URL") #pulls value(connection string)
 
