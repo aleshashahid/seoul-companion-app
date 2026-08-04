@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Program = {
   id: number;
@@ -21,6 +21,15 @@ export default function Recommend() {
   const [results, setResults] = useState<Program[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const savedId = localStorage.getItem("seoulCompanionUserId");
+    if (savedId) {
+      setUserId(Number(savedId));
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +58,33 @@ export default function Recommend() {
       setLoading(false);
     }
   }
+
+  async function handleSaveProfile() {
+  setSaving(true);
+  try {
+    const res = await fetch("http://localhost:8000/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        budget: Number(budget),
+        duration_months: Number(durationMonths),
+        preferences: `interests: ${interests}; areas: ${preferredAreas}`,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to save profile");
+    }
+
+    const data = await res.json();
+    setUserId(data.id);
+    localStorage.setItem("seoulCompanionUserId", String(data.id));
+  } catch (err) {
+    setError("Couldn't save your profile. Try again.");
+  } finally {
+    setSaving(false);
+  }
+}
 
   return (
     <main className="min-h-screen px-6 py-12 max-w-2xl mx-auto">
@@ -93,6 +129,22 @@ export default function Recommend() {
           {loading ? "Finding matches..." : "Get Recommendations"}
         </button>
       </form>
+
+      <div className="mb-6">
+        {userId ? (
+          <p className="text-sm text-green-700">
+            Profile saved (ID: {userId})
+          </p>
+        ) : (
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving || !budget || !durationMonths}
+            className="text-sm underline text-gray-600 hover:text-black disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save this as my profile"}
+          </button>
+        )}
+      </div>
 
       {error && <p className="text-red-600 mb-6">{error}</p>}
 
