@@ -80,16 +80,19 @@ def create_user(user: UserCreate):
 # and returns a number between 0 and 1 (1 = perfect match, 0 = no match).
 
 def budget_match(program_cost: int, user_budget: int) -> float:
-    if program_cost > user_budget:
-        return 0.0  # can't afford it at all — hard zero, no partial credit
-    return 1 - (program_cost / user_budget)
-    # cheaper relative to budget = higher score
-    # e.g. cost=1M, budget=2M -> 1 - 0.5 = 0.5
+    if program_cost <= user_budget:
+        # within budget — same as before, cheaper relative to budget scores higher
+        return 1 - (program_cost / user_budget)
 
-# NOTE (revisit): budget_match is a hard cutoff (0 if over budget),
-# while interest_match gives partial credit even for partial overlap.
-# Consider softening the budget cutoff so being slightly over budget
-# isn't penalized as harshly as being wildly over.
+    # over budget — instead of a hard 0, apply a steep penalty based on HOW FAR over
+    overage_ratio = (program_cost - user_budget) / user_budget
+    # e.g. 10% over budget -> overage_ratio = 0.1
+    # e.g. 100% over budget (double the budget) -> overage_ratio = 1.0
+
+    penalty_score = max(0, 0.3 - overage_ratio)
+    # allows a small amount of credit for being just barely over budget,
+    # but it decays fast — anything more than 30% over budget still lands at 0
+    return penalty_score
 
 def interest_match(program_tags: list[str], user_interests: list[str]) -> float:
     if not user_interests:
@@ -183,7 +186,10 @@ def optimize_selection(user: dict, programs: list[dict], housing_options: list[d
 
     for program in programs:
         for housing in housing_options:
-            total_cost = program["cost"] + (housing["monthly_cost"] * user["duration_months"])
+            stay_duration = min(program["duration_months"], user["duration_months"])
+            # housing cost should reflect however long the person is actually there for THIS program,
+            # not just whatever duration they originally requested
+            total_cost = program["cost"] + (housing["monthly_cost"] * stay_duration)
 
             if total_cost <= user["total_budget"]:  # hard constraint, filters before scoring
                 program_score = score_program(program, user)
