@@ -249,3 +249,20 @@ def optimize(request: OptimizeRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Optimization error: {str(e)}")
+
+@app.get("/neighborhoods")
+def get_neighborhoods():
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT id, name, average_monthly_cost, nightlife_score, shopping_score,
+                   safety_score, transit_score, study_environment_score, tags
+            FROM neighborhoods;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return rows
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
