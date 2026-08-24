@@ -202,6 +202,7 @@ def optimize_selection(user: dict, programs: list[dict], housing_options: list[d
                         "program": program,
                         "housing": housing,
                         "total_cost": total_cost,
+                        "remaining_budget": user["total_budget"] - total_cost,
                         "score": round(combined_score, 3),
                     }
 
@@ -266,3 +267,64 @@ def get_neighborhoods():
         return rows
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+def neighborhood_match(neighborhood: dict, user_priorities: dict) -> float:
+    # user_priorities is a dict like {"nightlife": 0.6, "safety": 0.4} —
+    # the user says which dimensions matter most, and how much.
+    total_score = 0.0
+    total_weight = 0.0
+
+    dimension_map = {
+        "nightlife": neighborhood["nightlife_score"],
+        "shopping": neighborhood["shopping_score"],
+        "safety": neighborhood["safety_score"],
+        "transit": neighborhood["transit_score"],
+        "study": neighborhood["study_environment_score"],
+    }
+
+    for dimension, weight in user_priorities.items():
+        if dimension in dimension_map:
+            normalized_score = dimension_map[dimension] / 10  # convert 1-10 scale to 0-1
+            total_score += normalized_score * weight
+            total_weight += weight
+
+    if total_weight == 0:
+        return 0.5  # no priorities given -> neutral
+
+    return total_score / total_weight
+
+
+@app.get("/neighborhoods/match")
+def match_neighborhoods(
+    nightlife: float = 0,
+    shopping: float = 0,
+    safety: float = 0,
+    transit: float = 0,
+    study: float = 0,
+):
+    try:
+        user_priorities = {
+            "nightlife": nightlife, "shopping": shopping, "safety": safety,
+            "transit": transit, "study": study,
+        }
+        user_priorities = {k: v for k, v in user_priorities.items() if v > 0}
+
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT id, name, average_monthly_cost, nightlife_score, shopping_score,
+                   safety_score, transit_score, study_environment_score, tags
+            FROM neighborhoods;
+        """)
+        neighborhoods = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        for n in neighborhoods:
+            n["match_score"] = round(neighborhood_match(n, user_priorities), 3)
+
+        ranked = sorted(neighborhoods, key=lambda n: n["match_score"], reverse=True)
+        return ranked
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Matching error: {str(e)}")
