@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MatchRing } from "@/components/MatchRing";
 
 type OptimizeResult = {
   program: {
@@ -20,50 +21,7 @@ type OptimizeResult = {
   score: number;
 };
 
-// A circular progress ring built from plain SVG — no extra library needed.
-// It draws a full circle, then "hides" part of its stroke to show a percentage.
-function MatchRing({ score }: { score: number }) {
-  const percent = Math.round(score * 100);
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius; // the full length of the circle's edge
 
-  // strokeDashoffset shifts the visible dashed line — offsetting it by
-  // (1 - percent) of the total circumference "hides" the unfilled portion
-  const offset = circumference - (percent / 100) * circumference;
-
-  return (
-    <div className="relative w-24 h-24">
-      <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-        {/* background track — the full, dim circle */}
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="var(--color-border)"
-          strokeWidth="8"
-        />
-        {/* foreground progress — drawn on top, only showing `percent` of the circle */}
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="var(--color-accent-match)"
-          strokeWidth="8"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-[family-name:var(--font-body)] text-xl font-semibold text-[var(--color-text)]">
-          {percent}%
-        </span>
-      </div>
-    </div>
-  );
-}
 
 export default function Optimizer() {
   const [budget, setBudget] = useState("");
