@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Newsreader, Manrope } from "next/font/google";
 import "./globals.css";
+import { Nav } from "@/components/Nav";
 
 const newsreader = Newsreader({
   subsets: ["latin"],
@@ -28,6 +29,7 @@ export default function RootLayout({
       className={`${newsreader.variable} ${manrope.variable} h-full antialiased`}
     >
     <body className={`${newsreader.variable} ${manrope.variable} font-sans`}>
+      <Nav />
       {children}
     </body>
     </html>
