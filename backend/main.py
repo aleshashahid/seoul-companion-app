@@ -96,15 +96,19 @@ def budget_match(program_cost: int, user_budget: int) -> float:
 
 def interest_match(program_tags: list[str], user_interests: list[str]) -> float:
     if not user_interests:
-        return 0.5  # user gave no preference -> neutral score, not a penalty
-    overlap = set(program_tags) & set(user_interests)  # tags in BOTH lists
-    return len(overlap) / len(user_interests)  # fraction of user's interests satisfied
+        return 0.5
+    normalized_tags = {tag.lower() for tag in program_tags}
+    normalized_interests = {interest.lower() for interest in user_interests}
+    overlap = normalized_tags & normalized_interests
+    return len(overlap) / len(normalized_interests)
 
 
 def location_match(program_location: str, preferred_areas: list[str]) -> float:
     if not preferred_areas:
-        return 0.5  # no preference stated -> neutral
-    return 1.0 if program_location in preferred_areas else 0.0  # binary, not partial
+        return 0.5
+    # normalize both sides to lowercase before comparing, so casing doesn't matter
+    normalized_areas = [area.lower() for area in preferred_areas]
+    return 1.0 if program_location.lower() in normalized_areas else 0.0
 
 
 def duration_match(program_duration: int, user_duration: int) -> float:

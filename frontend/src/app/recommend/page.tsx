@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { MatchRing } from "@/components/MatchRing";
 
 type Program = {
   id: number;
@@ -60,44 +61,49 @@ export default function Recommend() {
   }
 
   async function handleSaveProfile() {
-  setSaving(true);
-  try {
-    const res = await fetch("http://localhost:8000/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        budget: Number(budget),
-        duration_months: Number(durationMonths),
-        preferences: `interests: ${interests}; areas: ${preferredAreas}`,
-      }),
-    });
+    setSaving(true);
+    try {
+      const res = await fetch("http://localhost:8000/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          budget: Number(budget),
+          duration_months: Number(durationMonths),
+          preferences: `interests: ${interests}; areas: ${preferredAreas}`,
+        }),
+      });
 
-    if (!res.ok) {
-      throw new Error("Failed to save profile");
+      if (!res.ok) {
+        throw new Error("Failed to save profile");
+      }
+
+      const data = await res.json();
+      setUserId(data.id);
+      localStorage.setItem("seoulCompanionUserId", String(data.id));
+    } catch (err) {
+      setError("Couldn't save your profile. Try again.");
+    } finally {
+      setSaving(false);
     }
-
-    const data = await res.json();
-    setUserId(data.id);
-    localStorage.setItem("seoulCompanionUserId", String(data.id));
-  } catch (err) {
-    setError("Couldn't save your profile. Try again.");
-  } finally {
-    setSaving(false);
   }
-}
 
   return (
-    <main className="min-h-screen px-6 py-12 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Find Your Program</h1>
+    <main className="min-h-screen px-6 py-16 max-w-2xl mx-auto">
+      <h1 className="font-[family-name:var(--font-display)] text-4xl mb-2 text-[var(--color-text)]">
+        Find your program
+      </h1>
+      <p className="text-[var(--color-text)]/70 mb-10">
+        Tell us what matters to you, and we&apos;ll rank every program by fit.
+      </p>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-10">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-6">
         <input
           type="number"
           placeholder="Budget (KRW)"
           value={budget}
           onChange={(e) => setBudget(e.target.value)}
           required
-          className="border rounded-lg px-4 py-2"
+          className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-match)]"
         />
         <input
           type="number"
@@ -105,63 +111,70 @@ export default function Recommend() {
           value={durationMonths}
           onChange={(e) => setDurationMonths(e.target.value)}
           required
-          className="border rounded-lg px-4 py-2"
+          className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-match)]"
         />
         <input
           type="text"
-          placeholder="Interests, comma-separated (e.g. stem,business)"
+          placeholder="Interests (e.g. stem, business)"
           value={interests}
           onChange={(e) => setInterests(e.target.value)}
-          className="border rounded-lg px-4 py-2"
+          className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-match)]"
         />
         <input
           type="text"
-          placeholder="Preferred areas, comma-separated (e.g. Sinchon,Gwanak)"
+          placeholder="Preferred areas (e.g. Sinchon, Gwanak)"
           value={preferredAreas}
           onChange={(e) => setPreferredAreas(e.target.value)}
-          className="border rounded-lg px-4 py-2"
+          className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-match)]"
         />
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-black text-white px-6 py-3 font-medium hover:bg-gray-800 disabled:opacity-50"
+          className="bg-[var(--color-text)] text-[var(--color-surface)] rounded-xl px-6 py-3 font-medium disabled:opacity-50"
         >
-          {loading ? "Finding matches..." : "Get Recommendations"}
+          {loading ? "Finding matches..." : "Get recommendations"}
         </button>
       </form>
 
-      <div className="mb-6">
+      <div className="mb-10">
         {userId ? (
-          <p className="text-sm text-green-700">
+          <p className="text-sm text-[var(--color-accent-match)]">
             Profile saved (ID: {userId})
           </p>
         ) : (
           <button
             onClick={handleSaveProfile}
             disabled={saving || !budget || !durationMonths}
-            className="text-sm underline text-gray-600 hover:text-black disabled:opacity-50"
+            className="text-sm underline text-[var(--color-text)]/60 hover:text-[var(--color-text)] disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save this as my profile"}
           </button>
         )}
       </div>
 
-      {error && <p className="text-red-600 mb-6">{error}</p>}
+      {error && <p className="text-[var(--color-accent-cost)] mb-6">{error}</p>}
 
       <div className="flex flex-col gap-4">
         {results.map((program) => (
-          <div key={program.id} className="border rounded-lg p-5 shadow-sm">
-            <div className="flex justify-between items-start">
-              <h2 className="text-xl font-semibold">{program.name}</h2>
-              <span className="text-sm font-medium bg-gray-100 rounded-full px-3 py-1">
-                {(program.score * 100).toFixed(0)}% match
-              </span>
+          <div
+            key={program.id}
+            className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-5 flex items-center gap-5"
+          >
+            <MatchRing score={program.score} size={64} />
+            <div className="flex-1">
+              <p className="text-sm text-[var(--color-text)]/60 mb-1">
+                {program.university}
+              </p>
+              <h2 className="font-[family-name:var(--font-display)] text-xl mb-1">
+                {program.name}
+              </h2>
+              <p className="text-sm text-[var(--color-text)]/60">
+                {program.location} · {program.duration_months} months ·{" "}
+                <span className="font-sans font-medium text-[var(--color-accent-cost)]">
+                  ₩{program.cost.toLocaleString()}
+                </span>
+              </p>
             </div>
-            <p className="text-gray-600">{program.university}</p>
-            <p className="text-sm text-gray-500">
-              {program.location} · {program.duration_months} months · ₩
-              {program.cost.toLocaleString()}
-            </p>
           </div>
         ))}
       </div>
