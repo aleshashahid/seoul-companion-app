@@ -9,7 +9,7 @@ type Program = {
 };
 
 async function getPrograms(): Promise<Program[]> {
-  const res = await fetch("http://localhost:8000/programs", {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/programs`, {
     cache: "no-store",
   });
 

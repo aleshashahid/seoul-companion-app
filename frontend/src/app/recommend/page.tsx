@@ -45,7 +45,7 @@ export default function Recommend() {
         preferred_areas: preferredAreas,
       });
 
-      const res = await fetch(`http://localhost:8000/recommend?${params}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/recommend?${params}`);
 
       if (!res.ok) {
         throw new Error("Failed to fetch recommendations");
@@ -63,7 +63,7 @@ export default function Recommend() {
   async function handleSaveProfile() {
     setSaving(true);
     try {
-      const res = await fetch("http://localhost:8000/users", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

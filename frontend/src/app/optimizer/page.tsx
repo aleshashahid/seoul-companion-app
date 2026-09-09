@@ -39,7 +39,7 @@ export default function Optimizer() {
     setResult(null);
 
     try {
-      const res = await fetch("http://localhost:8000/optimize", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/optimize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

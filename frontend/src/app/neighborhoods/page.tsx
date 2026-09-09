@@ -53,7 +53,7 @@ export default function Neighborhoods() {
           Object.entries(priorities).map(([k, v]) => [k, String(v)])
         )
       );
-      const res = await fetch(`http://localhost:8000/neighborhoods/match?${params}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/neighborhoods/match?${params}`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setResults(data);
