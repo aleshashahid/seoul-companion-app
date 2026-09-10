@@ -14,7 +14,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://seoul-companion-app.netlify.app/",
+        "https://seoul-companion-app.netlify.app",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
