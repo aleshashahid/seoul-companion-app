@@ -12,7 +12,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://seoul-companion-app.vercel.app",
+        "https://singular-rolypoly-08c9f6.netlify.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
