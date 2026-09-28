@@ -184,9 +184,10 @@ def housing_fit_score(housing: dict, user: dict) -> float:
 #   not the chosen program's own duration — currently assumes the stay length
 #   matches the user's input regardless of program length. Consider using
 #   min(program["duration_months"], user["duration_months"]) instead.
-def optimize_selection(user: dict, programs: list[dict], housing_options: list[dict]):
-    best_combo = None
-    best_score = -1  # anything real will beat this, so the first valid combo always wins initially
+def optimize_selection(user: dict, programs: list[dict], housing_options: list[dict], top_n: int = 3):
+    # instead of tracking one winner, collect every affordable combo,
+    # then sort and slice to the top N at the end
+    valid_combos = []
 
     for program in programs:
         for housing in housing_options:
@@ -195,22 +196,22 @@ def optimize_selection(user: dict, programs: list[dict], housing_options: list[d
             # not just whatever duration they originally requested
             total_cost = program["cost"] + (housing["monthly_cost"] * stay_duration)
 
-            if total_cost <= user["total_budget"]:  # hard constraint, filters before scoring
+            if total_cost <= user["total_budget"]:
                 program_score = score_program(program, user)
                 housing_score = housing_fit_score(housing, user)
                 combined_score = (program_score * 0.7) + (housing_score * 0.3)
 
-                if combined_score > best_score:
-                    best_score = combined_score
-                    best_combo = {
-                        "program": program,
-                        "housing": housing,
-                        "total_cost": total_cost,
-                        "remaining_budget": user["total_budget"] - total_cost,
-                        "score": round(combined_score, 3),
-                    }
+                valid_combos.append({
+                    "program": program,
+                    "housing": housing,
+                    "total_cost": total_cost,
+                    "remaining_budget": user["total_budget"] - total_cost,
+                    "score": round(combined_score, 3),
+                })
 
-    return best_combo
+    # sort every valid combo by score, highest first, then take the top N
+    valid_combos.sort(key=lambda c: c["score"], reverse=True)
+    return valid_combos[:top_n]
 
 
 class OptimizeRequest(BaseModel):
@@ -243,12 +244,12 @@ def optimize(request: OptimizeRequest):
         cur.close()
         conn.close()
 
-        result = optimize_selection(user, programs, housing_options)
+        results = optimize_selection(user, programs, housing_options)
 
-        if result is None:
+        if not results:
             raise HTTPException(status_code=404, detail="No program + housing combination fits within this budget.")
 
-        return result
+        return results
 
     except HTTPException:
         raise

@@ -92,8 +92,6 @@ def test_duration_match_never_goes_negative():
 # not just individual math functions in isolation.
 
 def test_optimizer_never_exceeds_budget():
-    # THE core guarantee being tested: whatever the optimizer picks,
-    # it must never cost more than the user's stated budget.
     programs = [
         {"id": 1, "name": "A", "cost": 1000000, "duration_months": 6, "location": "Sinchon", "tags": ["stem"]},
         {"id": 2, "name": "B", "cost": 2000000, "duration_months": 6, "location": "Gwanak", "tags": ["business"]},
@@ -103,19 +101,17 @@ def test_optimizer_never_exceeds_budget():
         {"id": 2, "type": "Studio", "monthly_cost": 1000000, "location": "Gangnam"},
     ]
     user = {
-        # cheapest possible combo here is Program A (1,000,000) + Goshiwon (400,000 x 6 = 2,400,000)
-        # = 3,400,000 total, so budget needs enough room for that to be a valid answer
         "budget": 5000000, "total_budget": 5000000, "duration_months": 6,
         "interests": ["stem"], "preferred_areas": ["Sinchon"],
     }
 
-    result = optimize_selection(user, programs, housing)
+    results = optimize_selection(user, programs, housing)
 
-    assert result is not None  # something affordable should exist here
-    assert result["total_cost"] <= user["total_budget"]  # the core constraint being tested
+    assert len(results) > 0  # at least one affordable combo should exist
+    for combo in results:
+        assert combo["total_cost"] <= user["total_budget"]  # EVERY returned combo must respect budget
 
-def test_optimizer_returns_none_when_nothing_fits():
-    # an unrealistically tiny budget should return None, not crash or pick something anyway
+def test_optimizer_returns_empty_when_nothing_fits():
     programs = [{"id": 1, "name": "A", "cost": 5000000, "duration_months": 6, "location": "Sinchon", "tags": ["stem"]}]
     housing = [{"id": 1, "type": "Studio", "monthly_cost": 2000000, "location": "Gangnam"}]
     user = {
@@ -123,5 +119,26 @@ def test_optimizer_returns_none_when_nothing_fits():
         "interests": [], "preferred_areas": [],
     }
 
-    result = optimize_selection(user, programs, housing)
-    assert result is None
+    results = optimize_selection(user, programs, housing)
+    assert results == []
+
+def test_optimizer_returns_at_most_top_n():
+    # with only 2 programs x 2 housing = 4 combos, requesting top 3 should return at most 3, not error
+    programs = [
+        {"id": 1, "name": "A", "cost": 500000, "duration_months": 6, "location": "Sinchon", "tags": ["stem"]},
+        {"id": 2, "name": "B", "cost": 600000, "duration_months": 6, "location": "Gwanak", "tags": ["business"]},
+    ]
+    housing = [
+        {"id": 1, "type": "Goshiwon", "monthly_cost": 300000, "location": "Sinchon"},
+        {"id": 2, "type": "Studio", "monthly_cost": 400000, "location": "Gangnam"},
+    ]
+    user = {
+        "budget": 5000000, "total_budget": 5000000, "duration_months": 6,
+        "interests": [], "preferred_areas": [],
+    }
+
+    results = optimize_selection(user, programs, housing)
+    assert len(results) <= 3
+    # confirm results are actually sorted highest-score-first
+    scores = [c["score"] for c in results]
+    assert scores == sorted(scores, reverse=True)

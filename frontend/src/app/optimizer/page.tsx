@@ -28,7 +28,7 @@ export default function Optimizer() {
   const [durationMonths, setDurationMonths] = useState("");
   const [interests, setInterests] = useState("");
   const [preferredAreas, setPreferredAreas] = useState("");
-  const [result, setResult] = useState<OptimizeResult | null>(null);
+  const [results, setResults] = useState<OptimizeResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,7 +36,7 @@ export default function Optimizer() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setResult(null);
+    setResults([]);
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/optimize`, {
@@ -62,7 +62,7 @@ export default function Optimizer() {
       }
 
       const data = await res.json();
-      setResult(data);
+      setResults(data);
     } catch (err) {
       setError("Something went wrong. Try again.");
     } finally {
@@ -124,59 +124,69 @@ export default function Optimizer() {
         <p className="text-[var(--color-accent-cost)] mb-6">{error}</p>
       )}
 
-      {result && (
-        // the "boarding pass" card — program half and housing half,
-        // separated by a notched divider
-        <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden shadow-sm">
-          <div className="p-6 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-[var(--color-text)]/60 mb-1">
-                {result.program.university}
-              </p>
-              <h2 className="font-[family-name:var(--font-display)] text-2xl mb-1">
-                {result.program.name}
-              </h2>
-              <p className="text-sm text-[var(--color-text)]/60">
-                {result.program.location} · {result.program.duration_months} months
-              </p>
-            </div>
-            <MatchRing score={result.score} />
-          </div>
-
-          {/* the notched divider — two half-circles cut into the edges,
-              mimicking a real ticket's tear-line */}
-          <div className="relative flex items-center px-6">
-            <div className="flex-1 border-t border-dashed border-[var(--color-border)]" />
-          </div>
-
-          <div className="p-6">
-            <p className="text-sm text-[var(--color-text)]/60 mb-1">Housing</p>
-            <p className="font-medium mb-1">
-              {result.housing.type} in {result.housing.location}
-            </p>
-            <p className="text-sm text-[var(--color-text)]/60">
-              ₩{result.housing.monthly_cost.toLocaleString()}/month
-            </p>
-
-            <div className="flex gap-6 mt-6 pt-6 border-t border-[var(--color-border)]">
-              <div>
-                <p className="text-xs text-[var(--color-text)]/60 mb-1">
-                  Total cost
-                </p>
-                <p className="text-lg font-semibold text-[var(--color-accent-cost)]">
-                  ₩{result.total_cost.toLocaleString()}
-                </p>
+      {results.length > 0 && (
+        <div className="flex flex-col gap-6">
+          {results.map((result, index) => (
+            <div
+              key={index}
+              className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden shadow-sm"
+            >
+              {index === 0 && (
+                <div className="bg-[var(--color-accent-match)] text-[var(--color-surface)] text-xs font-medium px-4 py-1.5">
+                  Best match
+                </div>
+              )}
+              <div className="p-6 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm text-[var(--color-text)]/60 mb-1">
+                    {result.program.university}
+                  </p>
+                  <h2 className="font-[family-name:var(--font-display)] text-2xl mb-1">
+                    {result.program.name}
+                  </h2>
+                  <p className="text-sm text-[var(--color-text)]/60">
+                    {result.program.location} · {result.program.duration_months} months
+                  </p>
+                </div>
+                <MatchRing score={result.score} />
               </div>
-              <div>
-                <p className="text-xs text-[var(--color-text)]/60 mb-1">
-                  Remaining
+
+              {/* the notched divider — two half-circles cut into the edges,
+                  mimicking a real ticket's tear-line */}
+              <div className="relative flex items-center px-6">
+                <div className="flex-1 border-t border-dashed border-[var(--color-border)]" />
+              </div>
+
+              <div className="p-6">
+                <p className="text-sm text-[var(--color-text)]/60 mb-1">Housing</p>
+                <p className="font-medium mb-1">
+                  {result.housing.type} in {result.housing.location}
                 </p>
-                <p className="text-lg font-semibold">
-                  ₩{result.remaining_budget.toLocaleString()}
+                <p className="text-sm text-[var(--color-text)]/60">
+                  ₩{result.housing.monthly_cost.toLocaleString()}/month
                 </p>
+
+                <div className="flex gap-6 mt-6 pt-6 border-t border-[var(--color-border)]">
+                  <div>
+                    <p className="text-xs text-[var(--color-text)]/60 mb-1">
+                      Total cost
+                    </p>
+                    <p className="text-lg font-semibold text-[var(--color-accent-cost)] font-sans">
+                      ₩{result.total_cost.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--color-text)]/60 mb-1">
+                      Remaining
+                    </p>
+                    <p className="text-lg font-semibold font-sans">
+                      ₩{result.remaining_budget.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
     </main>
